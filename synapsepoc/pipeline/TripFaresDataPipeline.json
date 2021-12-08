@@ -469,7 +469,7 @@
 			},
 			"SQLDedicatedPoolName": {
 				"type": "string",
-				"defaultValue": "tkarpt23qoonklopocws1"
+				"defaultValue": "tkarpt23qoonklopocws1p1"
 			},
 			"SQLLoginUsername": {
 				"type": "string",
