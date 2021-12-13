@@ -11,6 +11,10 @@
 			"type": "secureString",
 			"metadata": "Secure string for 'connectionString' of 'TripFaresSynapseAnalyticsLinkedService'"
 		},
+		"sandboxadls_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'sandboxadls'"
+		},
 		"HttpServerTripDataLinkedService_properties_typeProperties_url": {
 			"type": "string",
 			"defaultValue": "https://raw.githubusercontent.com/Azure/Test-Drive-Azure-Synapse-with-a-1-click-POC/main/tripDataAndFaresCSV/trip-data.csv"
@@ -26,6 +30,10 @@
 		"keyVaultLinkedservice_properties_typeProperties_baseUrl": {
 			"type": "string",
 			"defaultValue": "@{concat('https://',linkedService().keyVaultName,'.vault.azure.net/')}"
+		},
+		"sandboxadls_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://sandboxadls.dfs.core.windows.net"
 		}
 	},
 	"variables": {
@@ -251,8 +259,7 @@
 								"coreCount": 8,
 								"computeType": "General"
 							},
-							"traceLevel": "Fine",
-							"continuationSettings": {}
+							"traceLevel": "Fine"
 						}
 					},
 					{
@@ -1088,6 +1095,20 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('workspaceName'), '/PowerBIWorkspace1')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "PowerBIWorkspace",
+				"typeProperties": {
+					"workspaceID": "ff98db37-edd9-412f-8a08-3b5bf9860ba7",
+					"tenantID": "72f988bf-86f1-41af-91ab-2d7cd011db47"
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('workspaceName'), '/PowerBIWorkspaceTripsFares')]",
 			"type": "Microsoft.Synapse/workspaces/linkedServices",
 			"apiVersion": "2019-06-01-preview",
@@ -1208,6 +1229,29 @@
 				}
 			},
 			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/sandboxadls')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('sandboxadls_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('sandboxadls_accountKey')]"
+					}
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('workspaceName'), '/AutoResolveIntegrationRuntime')]",
@@ -1651,16 +1695,91 @@
 			"dependsOn": []
 		},
 		{
-			"name": "[concat(parameters('workspaceName'), '/PowerBIWorkspace1')]",
-			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"name": "[concat(parameters('workspaceName'), '/Serveless Create View')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
 			"apiVersion": "2019-06-01-preview",
 			"properties": {
-				"annotations": [],
-				"type": "PowerBIWorkspace",
-				"typeProperties": {
-					"workspaceID": "ff98db37-edd9-412f-8a08-3b5bf9860ba7",
-					"tenantID": "72f988bf-86f1-41af-91ab-2d7cd011db47"
-				}
+				"content": {
+					"query": "CREATE DATABASE servelessdb\n\n\nCREATE VIEW azurevm AS\n(SELECT *\nFROM\n    OPENROWSET(\n        BULK 'https://sandboxadls.dfs.core.windows.net/azurevm2/parquet/part-00000-tid-8510163697401469336-d0123688-9aa0-44ff-9a06-8a92e3537f51-3718-1-c000.snappy.parquet',\n        FORMAT = 'PARQUET'\n    ) AS [result]\n)",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "servelessdb",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AdventureWorks')]",
+			"type": "Microsoft.Synapse/workspaces/sqlPools",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": []
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Serveless simple query')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "SELECT TOP (100) * FROM [dbo].[azurevm]",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "servelessdb",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/Dedicated simple query')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "SELECT TOP (100) [medallion]\n,[hack_license]\n,[vendor_id]\n,[pickup_datetime]\n,[payment_type]\n,[fare_amount]\n,[surcharge]\n,[mta_tax]\n,[tip_amount]\n,[tolls_amount]\n,[total_amount]\n FROM [dbo].[FaresData]\n\n\nSELECT SUM(CAST(total_amount AS FLOAT)) as TotalAmount, COUNT(*) AS TotalTrips FROM [dbo].[FaresData]\n",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "tkarpt23qoonklopocws1p1",
+						"poolName": "tkarpt23qoonklopocws1p1"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/RLS')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"content": {
+					"query": "CREATE USER Employee112 WITHOUT LOGIN;  \nCREATE USER Employee189 WITHOUT LOGIN;  \nCREATE USER Employee10 WITHOUT LOGIN;\nGO\n\n\nSELECT TOP(100) * FROM dbo.DimEmployee\nSELECT TOP(100) * FROM dbo.DimEmployee WHERE EmployeeKey = 10 --Employee\nSELECT TOP(100) * FROM dbo.DimEmployee WHERE ParentEmployeeKey = 10 --No direct reports\nSELECT TOP(100) * FROM dbo.DimEmployee WHERE ParentEmployeeKey = 189 --Manager\nSELECT TOP(100) * FROM dbo.DimEmployee WHERE EmployeeKey = 112  --CEO\n\n\nGRANT SELECT ON dbo.DimEmployee TO Employee112;  \nGRANT SELECT ON dbo.DimEmployee TO Employee189;  \nGRANT SELECT ON dbo.DimEmployee TO Employee10; \nGO\n\nCREATE SCHEMA sec;  \nGO  \n  \nCREATE FUNCTION sec.tvf_securitypredicate(@EmployeeKey AS INT, @ParentEmployeeKey AS INT)  \n    RETURNS TABLE  \nWITH SCHEMABINDING  \nAS  \n    RETURN SELECT 1 AS tvf_securitypredicate_result\nWHERE @EmployeeKey = CAST(REPLACE(USER_NAME(), 'Employee', '') AS INT) OR @ParentEmployeeKey = CAST(REPLACE(USER_NAME(), 'Employee', '') AS INT)  OR USER_NAME() = 'Employee112'\nGO\n\nCREATE SECURITY POLICY EmployeeFilter  \nADD FILTER PREDICATE sec.tvf_securitypredicate(EmployeeKey, ParentEmployeeKey)\nON dbo.DimEmployee\nWITH (STATE = ON);  \nGO\n\nGRANT SELECT ON sec.tvf_securitypredicate TO Employee112;\nGRANT SELECT ON sec.tvf_securitypredicate TO Employee189;  \nGRANT SELECT ON sec.tvf_securitypredicate TO Employee10; \nGO\n\nEXECUTE AS USER = 'Employee189';  \nSELECT * FROM dbo.DimEmployee;\nREVERT;",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "AdventureWorks",
+						"poolName": "AdventureWorks"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
 			},
 			"dependsOn": []
 		}
