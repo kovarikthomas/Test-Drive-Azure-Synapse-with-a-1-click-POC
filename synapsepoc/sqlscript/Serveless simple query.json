@@ -1,0 +1,17 @@
+{
+	"name": "Serveless simple query",
+	"properties": {
+		"content": {
+			"query": "SELECT TOP (100) * FROM [dbo].[azurevm]",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "servelessdb",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}

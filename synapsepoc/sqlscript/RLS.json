@@ -1,0 +1,17 @@
+{
+	"name": "RLS",
+	"properties": {
+		"content": {
+			"query": "CREATE USER Employee112 WITHOUT LOGIN;  \nCREATE USER Employee189 WITHOUT LOGIN;  \nCREATE USER Employee10 WITHOUT LOGIN;\nGO\n\n\nSELECT TOP(100) * FROM dbo.DimEmployee\nSELECT TOP(100) * FROM dbo.DimEmployee WHERE EmployeeKey = 10 --Employee\nSELECT TOP(100) * FROM dbo.DimEmployee WHERE ParentEmployeeKey = 10 --No direct reports\nSELECT TOP(100) * FROM dbo.DimEmployee WHERE ParentEmployeeKey = 189 --Manager\nSELECT TOP(100) * FROM dbo.DimEmployee WHERE EmployeeKey = 112  --CEO\n\n\nGRANT SELECT ON dbo.DimEmployee TO Employee112;  \nGRANT SELECT ON dbo.DimEmployee TO Employee189;  \nGRANT SELECT ON dbo.DimEmployee TO Employee10; \nGO\n\nCREATE SCHEMA sec;  \nGO  \n  \nCREATE FUNCTION sec.tvf_securitypredicate(@EmployeeKey AS INT, @ParentEmployeeKey AS INT)  \n    RETURNS TABLE  \nWITH SCHEMABINDING  \nAS  \n    RETURN SELECT 1 AS tvf_securitypredicate_result\nWHERE @EmployeeKey = CAST(REPLACE(USER_NAME(), 'Employee', '') AS INT) OR @ParentEmployeeKey = CAST(REPLACE(USER_NAME(), 'Employee', '') AS INT)  OR USER_NAME() = 'Employee112'\nGO\n\nCREATE SECURITY POLICY EmployeeFilter  \nADD FILTER PREDICATE sec.tvf_securitypredicate(EmployeeKey, ParentEmployeeKey)\nON dbo.DimEmployee\nWITH (STATE = ON);  \nGO\n\nGRANT SELECT ON sec.tvf_securitypredicate TO Employee112;\nGRANT SELECT ON sec.tvf_securitypredicate TO Employee189;  \nGRANT SELECT ON sec.tvf_securitypredicate TO Employee10; \nGO\n\nEXECUTE AS USER = 'Employee189';  \nSELECT * FROM dbo.DimEmployee;\nREVERT;",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "AdventureWorks",
+				"poolName": "AdventureWorks"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}
