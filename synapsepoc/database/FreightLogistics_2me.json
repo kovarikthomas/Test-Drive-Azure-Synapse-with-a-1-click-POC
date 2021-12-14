@@ -1,0 +1,24 @@
+{
+	"name": "FreightLogistics_2me",
+	"properties": {
+		"Description": "",
+		"Name": "FreightLogistics_2me",
+		"EntityType": "DATABASE",
+		"Origin": {
+			"Type": "SPARK"
+		},
+		"Properties": {
+			"DerivedModelDBInfo": "{\"ModelDirectives\":{\"BaseModel\":{\"Name\":\"FreightLogistics\",\"Version\":\"0.1.0\"}}}",
+			"IsSyMSCDMDatabase": true
+		},
+		"Source": {
+			"Provider": "ADLS",
+			"Location": "abfss://hkfs@sandboxadls.dfs.core.windows.net/",
+			"Properties": {
+				"FormatType": "csv",
+				"LinkedServiceName": "sandboxadls"
+			}
+		}
+	},
+	"type": "DATABASE"
+}
