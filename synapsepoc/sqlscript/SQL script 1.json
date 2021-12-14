@@ -1,0 +1,17 @@
+{
+	"name": "SQL script 1",
+	"properties": {
+		"content": {
+			"query": "-- This is auto-generated code\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://sandboxadls.dfs.core.windows.net/azurevm2/parquet/part-00000-tid-8510163697401469336-d0123688-9aa0-44ff-9a06-8a92e3537f51-3718-1-c000.snappy.parquet',\n        FORMAT = 'PARQUET'\n    ) AS [result]\n",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "master",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}
